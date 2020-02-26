@@ -25,7 +25,7 @@ TEST_FORMAT = short-verbose
 endif
 
 # Dependency versions
-GOTESTSUM_VERSION ?= 0.4.0
+GOTESTSUM_VERSION ?= 0.4.1
 GOLANGCI_VERSION ?= 1.23.6
 
 GOLANG_VERSION ?= 1.14
