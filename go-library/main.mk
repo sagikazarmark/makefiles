@@ -17,7 +17,7 @@ endif
 
 # Dependency versions
 GOTESTSUM_VERSION ?= 0.4.1
-GOLANGCI_VERSION ?= 1.23.6
+GOLANGCI_VERSION ?= 1.24.0
 
 .PHONY: clear
 clear: ## Clear the working area and the project
