@@ -167,4 +167,4 @@ varexport-%: ; @echo $*=$($*)
 
 # Update main targets
 _update:
-	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/go-binary/main.mk > main.mk
+	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/go-app/main.mk > main.mk
