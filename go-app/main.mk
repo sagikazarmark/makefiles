@@ -38,6 +38,13 @@ clear: ${CLEAR_TARGETS} ## Clear the working area and the project
 clean: ${CLEAN_TARGETS} ## Clean builds
 	rm -rf ${BUILD_DIR}/
 
+.PHONY: run-%
+run-%: build-%
+	${BUILD_DIR}/$*
+
+.PHONY: run
+run: $(patsubst cmd/%,run-%,$(wildcard cmd/*)) ## Build and execute all applications
+
 .PHONY: goversion
 goversion:
 ifneq (${IGNORE_GOLANG_VERSION}, 1)
@@ -55,6 +62,18 @@ pre-build: ${PRE_BUILD_TARGETS}
 .PHONY: post-build
 post-build: ${POST_BUILD_TARGETS}
 	@:
+
+.PHONY: build-%
+build-%: build-deps pre-build
+build-%: goversion
+ifeq (${VERBOSE}, 1)
+	go env
+endif
+
+	@mkdir -p ${BUILD_DIR}
+	go build ${GOARGS} -trimpath -tags "${GOTAGS}" -ldflags "${LDFLAGS}" -o ${BUILD_DIR}/$* ./cmd/$*
+
+	@${MAKE} post-build
 
 .PHONY: build
 build: build-deps pre-build
