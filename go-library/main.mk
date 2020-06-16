@@ -113,6 +113,5 @@ var-%: ; @echo $($*)
 varexport-%: ; @echo $*=$($*)
 
 # Update main targets
-.PHONY: main.mk
 main.mk:
 	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/go-library/main.mk > main.mk

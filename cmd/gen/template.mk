@@ -237,6 +237,5 @@ varexport-%: ; @echo $*=$($*)
 {{- end }}
 
 # Update main targets
-.PHONY: main.mk
 main.mk:
 	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/{{ .ProjectType }}/main.mk > main.mk
