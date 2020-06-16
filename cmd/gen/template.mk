@@ -61,12 +61,15 @@ endif
 
 .PHONY: build-deps
 build-deps: ${BUILD_DEP_TARGETS}
+	@:
 
 .PHONY: pre-build
 pre-build: ${PRE_BUILD_TARGETS}
+	@:
 
 .PHONY: post-build
 post-build: ${POST_BUILD_TARGETS}
+	@:
 
 .PHONY: build
 build: build-deps pre-build
@@ -83,12 +86,15 @@ endif
 .PHONY: build-release-deps
 build-release-deps: build-deps
 build-release-deps: ${BUILD_RELEASE_DEP_TARGETS}
+	@:
 
 .PHONY: pre-build-release
 pre-build-release: ${PRE_BUILD_RELEASE_TARGETS}
+	@:
 
 .PHONY: post-build-release
 post-build-release: ${POST_BUILD_RELEASE_TARGETS}
+	@:
 
 .PHONY: build-release
 build-release: build-release-deps pre-build-release
@@ -100,12 +106,15 @@ build-release: ## Build binaries without debug information
 .PHONY: build-debug-deps
 build-debug-deps: build-deps
 build-debug-deps: ${BUILD_DEBUG_DEP_TARGETS}
+	@:
 
 .PHONY: pre-build-debug
 pre-build-debug: ${PRE_BUILD_DEBUG_TARGETS}
+	@:
 
 .PHONY: post-build-debug
 post-build-debug: ${POST_BUILD_DEBUG_TARGETS}
+	@:
 
 .PHONY: build-debug
 build-debug: build-debug-deps pre-build-debug
