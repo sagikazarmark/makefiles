@@ -20,11 +20,12 @@ GOTESTSUM_VERSION ?= 0.4.2
 GOLANGCI_VERSION ?= 1.27.0
 
 .PHONY: clear
-clear: ## Clear the working area and the project
+clear: ${CLEAR_TARGETS} ## Clear the working area and the project
 	rm -rf bin/
 
 .PHONY: check
-check: test lint ## Run tests and linters
+check: ${CHECK_TARGETS}
+check: test lint ## Run checks (tests and linters)
 
 bin/gotestsum: bin/gotestsum-${GOTESTSUM_VERSION}
 	@ln -sf gotestsum-${GOTESTSUM_VERSION} bin/gotestsum

@@ -31,21 +31,31 @@ GOLANGCI_VERSION ?= 1.27.0
 GOLANG_VERSION ?= 1.14
 
 .PHONY: clear
-clear: ## Clear the working area and the project
+clear: ${CLEAR_TARGETS} ## Clear the working area and the project
 	rm -rf bin/
 
 .PHONY: clean
-clean: ## Clean builds
+clean: ${CLEAN_TARGETS} ## Clean builds
 	rm -rf ${BUILD_DIR}/
 
 .PHONY: goversion
 goversion:
-ifneq (${IGNORE_GOLANG_VERSION_REQ}, 1)
+ifneq (${IGNORE_GOLANG_VERSION}, 1)
 	@printf "${GOLANG_VERSION}\n$$(go version | awk '{sub(/^go/, "", $$3);print $$3}')" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | head -1 | grep -q -E "^${GOLANG_VERSION}$$" || (printf "Required Go version is ${GOLANG_VERSION}\nInstalled: `go version`" && exit 1)
 endif
 
+.PHONY: build-deps
+build-deps: ${BUILD_DEP_TARGETS}
+
+.PHONY: pre-build
+pre-build: ${PRE_BUILD_TARGETS}
+
+.PHONY: post-build
+post-build: ${POST_BUILD_TARGETS}
+
 .PHONY: build
-build: goversion ## Build all binaries
+build: build-deps pre-build
+build: goversion ## Build binaries
 ifeq (${VERBOSE}, 1)
 	go env
 endif
@@ -53,8 +63,45 @@ endif
 	@mkdir -p ${BUILD_DIR}
 	go build ${GOARGS} -trimpath -tags "${GOTAGS}" -ldflags "${LDFLAGS}" -o ${BUILD_DIR}/ .
 
+	@${MAKE} post-build
+
+.PHONY: build-release-deps
+build-release-deps: build-deps
+build-release-deps: ${BUILD_RELEASE_DEP_TARGETS}
+
+.PHONY: pre-build-release
+pre-build-release: ${PRE_BUILD_RELEASE_TARGETS}
+
+.PHONY: post-build-release
+post-build-release: ${POST_BUILD_RELEASE_TARGETS}
+
+.PHONY: build-release
+build-release: build-release-deps pre-build-release
+build-release: ## Build binaries without debug information
+	@${MAKE} LDFLAGS="-w ${LDFLAGS}" GOARGS="${GOARGS} -trimpath" BUILD_DIR="${BUILD_DIR}/release" build
+
+	@${MAKE} post-build-release
+
+.PHONY: build-debug-deps
+build-debug-deps: build-deps
+build-debug-deps: ${BUILD_DEBUG_DEP_TARGETS}
+
+.PHONY: pre-build-debug
+pre-build-debug: ${PRE_BUILD_DEBUG_TARGETS}
+
+.PHONY: post-build-debug
+post-build-debug: ${POST_BUILD_DEBUG_TARGETS}
+
+.PHONY: build-debug
+build-debug: build-debug-deps pre-build-debug
+build-debug: ## Build binaries with remote debugging capabilities
+	@${MAKE} GOARGS="${GOARGS} -gcflags \"all=-N -l\"" BUILD_DIR="${BUILD_DIR}/debug" build
+
+	@${MAKE} post-build-debug
+
 .PHONY: check
-check: test lint ## Run tests and linters
+check: ${CHECK_TARGETS}
+check: test lint ## Run checks (tests and linters)
 
 bin/gotestsum: bin/gotestsum-${GOTESTSUM_VERSION}
 	@ln -sf gotestsum-${GOTESTSUM_VERSION} bin/gotestsum
