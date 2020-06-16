@@ -1,4 +1,4 @@
-# Main targets for a Go app project
+# Main targets for {{ .ProjectTypeDescription }}
 #
 # A Self-Documenting Makefile: http://marmelab.com/blog/2016/02/29/auto-documented-makefile.html
 
@@ -7,6 +7,7 @@ export PATH := $(abspath bin/):${PATH}
 
 # Build variables
 BUILD_DIR ?= build
+{{- if .LDFlags }}
 VERSION ?= $(shell git describe --tags --exact-match 2>/dev/null || git symbolic-ref -q --short HEAD)
 COMMIT_HASH ?= $(shell git rev-parse --short HEAD 2>/dev/null)
 DATE_FMT = +%FT%T%z
@@ -16,33 +17,47 @@ else
     BUILD_DATE ?= $(shell date "$(DATE_FMT)")
 endif
 LDFLAGS += -X main.version=${VERSION} -X main.commitHash=${COMMIT_HASH} -X main.buildDate=${BUILD_DATE}
+{{- end }}
 export CGO_ENABLED ?= 0
 ifeq (${VERBOSE}, 1)
 ifeq ($(filter -v,${GOARGS}),)
 	GOARGS += -v
 endif
+{{- if .GoTestSum }}
 TEST_FORMAT = short-verbose
+{{- end }}
 endif
 
 # Dependency versions
 GOTESTSUM_VERSION ?= 0.4.2
 GOLANGCI_VERSION ?= 1.27.0
 
+{{- if .GoVersion }}
+
 GOLANG_VERSION ?= 1.14
+{{- end }}
 
 .PHONY: clear
 clear: ${CLEAR_TARGETS} ## Clear the working area and the project
 	rm -rf bin/
 
+{{- if .Clean }}
+
 .PHONY: clean
 clean: ${CLEAN_TARGETS} ## Clean builds
 	rm -rf ${BUILD_DIR}/
+{{- end }}
+
+{{- if .GoVersion }}
 
 .PHONY: goversion
 goversion:
 ifneq (${IGNORE_GOLANG_VERSION}, 1)
 	@printf "${GOLANG_VERSION}\n$$(go version | awk '{sub(/^go/, "", $$3);print $$3}')" | sort -t '.' -k 1,1 -k 2,2 -k 3,3 -g | head -1 | grep -q -E "^${GOLANG_VERSION}$$" || (printf "Required Go version is ${GOLANG_VERSION}\nInstalled: `go version`" && exit 1)
 endif
+{{- end }}
+
+{{- if .Build }}
 
 .PHONY: build-deps
 build-deps: ${BUILD_DEP_TARGETS}
@@ -55,13 +70,13 @@ post-build: ${POST_BUILD_TARGETS}
 
 .PHONY: build
 build: build-deps pre-build
-build: goversion ## Build binaries
+build: {{ if .GoVersion }}goversion{{ end }} ## Build binaries
 ifeq (${VERBOSE}, 1)
 	go env
 endif
 
 	@mkdir -p ${BUILD_DIR}
-	go build ${GOARGS} -trimpath -tags "${GOTAGS}" -ldflags "${LDFLAGS}" -o ${BUILD_DIR}/ ./cmd/
+	go build ${GOARGS} -trimpath -tags "${GOTAGS}" -ldflags "${LDFLAGS}" -o ${BUILD_DIR}/ {{ .BuildPackage }}
 
 	@${MAKE} post-build
 
@@ -98,25 +113,33 @@ build-debug: ## Build binaries with remote debugging capabilities
 	@${MAKE} GOARGS="${GOARGS} -gcflags \"all=-N -l\"" BUILD_DIR="${BUILD_DIR}/debug" build
 
 	@${MAKE} post-build-debug
+{{- end }}
 
 .PHONY: check
 check: ${CHECK_TARGETS}
-check: test lint ## Run checks (tests and linters)
+check: test{{ if .Lint }} lint{{ end }} ## Run checks (tests and linters)
 
+{{- if .Test }}
+{{ if .GoTestSum }}
 bin/gotestsum: bin/gotestsum-${GOTESTSUM_VERSION}
 	@ln -sf gotestsum-${GOTESTSUM_VERSION} bin/gotestsum
 bin/gotestsum-${GOTESTSUM_VERSION}:
 	@mkdir -p bin
 	curl -L https://github.com/gotestyourself/gotestsum/releases/download/v${GOTESTSUM_VERSION}/gotestsum_${GOTESTSUM_VERSION}_${OS}_amd64.tar.gz | tar -zOxf - gotestsum > ./bin/gotestsum-${GOTESTSUM_VERSION} && chmod +x ./bin/gotestsum-${GOTESTSUM_VERSION}
-
+{{ end }}
 TEST_PKGS ?= ./...
 .PHONY: test
+{{- if .GoTestSum }}
 test: TEST_FORMAT ?= short
+{{- end }}
 test: SHELL = /bin/bash
 test: export CGO_ENABLED=1
-test: bin/gotestsum ## Run tests
+test: {{ if .GoTestSum }}bin/gotestsum {{ end }}## Run tests
 	@mkdir -p ${BUILD_DIR}
-	bin/gotestsum --no-summary=skipped --junitfile ${BUILD_DIR}/coverage.xml --format ${TEST_FORMAT} -- -race -coverprofile=${BUILD_DIR}/coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+	{{ if .GoTestSum }}bin/gotestsum --no-summary=skipped --junitfile ${BUILD_DIR}/coverage.xml --format ${TEST_FORMAT} --{{ else }}go test{{ end }} -race -coverprofile=${BUILD_DIR}/coverage.txt -covermode=atomic $(filter-out -v,${GOARGS}) $(if ${TEST_PKGS},${TEST_PKGS},./...)
+{{- end }}
+
+{{- if .Lint }}
 
 bin/golangci-lint: bin/golangci-lint-${GOLANGCI_VERSION}
 	@ln -sf golangci-lint-${GOLANGCI_VERSION} bin/golangci-lint
@@ -132,16 +155,22 @@ lint: bin/golangci-lint ## Run linter
 .PHONY: fix
 fix: bin/golangci-lint ## Fix lint violations
 	bin/golangci-lint run --fix
+{{- end }}
 
-release-%: TAG_PREFIX = v
+{{- if .Release }}
+
+release-%: TAG_PREFIX = {{ .TagPrefix }}
 release-%:
 ifneq (${DRY}, 1)
+{{- if .KeepAChangeLog }}
 	@sed -e "s/^## \[Unreleased\]$$/## [Unreleased]\\"$$'\n'"\\"$$'\n'"\\"$$'\n'"## [$*] - $$(date +%Y-%m-%d)/g; s|^\[Unreleased\]: \(.*\/compare\/\)\(.*\)...HEAD$$|[Unreleased]: \1${TAG_PREFIX}$*...HEAD\\"$$'\n'"[$*]: \1\2...${TAG_PREFIX}$*|g" CHANGELOG.md > CHANGELOG.md.new
 	@mv CHANGELOG.md.new CHANGELOG.md
-
+{{ end }}
 ifeq (${TAG}, 1)
+{{- if .KeepAChangeLog }}
 	git add CHANGELOG.md
 	git commit -m 'Prepare release $*'
+{{- end }}
 	git tag -m 'Release $*' ${TAG_PREFIX}$*
 ifeq (${PUSH}, 1)
 	git push; git push origin ${TAG_PREFIX}$*
@@ -155,7 +184,7 @@ ifneq (${PUSH}, 1)
 	@echo "Review the changes made by this script then execute the following:"
 ifneq (${TAG}, 1)
 	@echo
-	@echo "git add CHANGELOG.md && git commit -m 'Prepare release $*' && git tag -m 'Release $*' ${TAG_PREFIX}$*"
+	@echo "{{ if .KeepAChangeLog }}git add CHANGELOG.md && git commit -m 'Prepare release $*' && {{ end }}git tag -m 'Release $*' ${TAG_PREFIX}$*"
 	@echo
 	@echo "Finally, push the changes:"
 endif
@@ -174,20 +203,30 @@ minor: ## Release a new minor version
 .PHONY: major
 major: ## Release a new major version
 	@${MAKE} release-$(shell (git describe --abbrev=0 --tags 2> /dev/null || echo "0.0.0") | sed 's/^v//' | awk -F'[ .]' '{print $$1+1".0.0"}')
+{{- end }}
+
+{{- if .TargetList }}
 
 .PHONY: list
 list: ## List all make targets
 	@${MAKE} -pRrn : -f $(MAKEFILE_LIST) 2>/dev/null | awk -v RS= -F: '/^# File/,/^# Finished Make data base/ {if ($$1 !~ "^[#.]") {print $$1}}' | egrep -v -e '^[^[:alnum:]]' -e '^$@$$' | sort
+{{- end }}
+
+{{- if .Help }}
 
 .PHONY: help
 .DEFAULT_GOAL := help
 help:
 	@grep -h -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+{{- end }}
+
+{{- if .VarExport }}
 
 # Variable outputting/exporting rules
 var-%: ; @echo $($*)
 varexport-%: ; @echo $*=$($*)
+{{- end }}
 
 # Update main targets
 _update:
-	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/go-app/main.mk > main.mk
+	curl https://raw.githubusercontent.com/sagikazarmark/makefiles/master/{{ .ProjectType }}/main.mk > main.mk
