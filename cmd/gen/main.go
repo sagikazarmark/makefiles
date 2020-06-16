@@ -34,7 +34,7 @@ var templateData = []TemplateData{
 		GoVersion:              true,
 		Clean:                  true,
 		Build:                  true,
-		BuildPackage:           "./cmd/",
+		BuildPackage:           "./cmd/...",
 		Test:                   true,
 		GoTestSum:              true,
 		Lint:                   true,
