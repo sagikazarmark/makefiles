@@ -29,12 +29,12 @@ TEST_FORMAT = short-verbose
 endif
 
 # Dependency versions
-GOTESTSUM_VERSION ?= 0.4.2
-GOLANGCI_VERSION ?= 1.27.0
+GOTESTSUM_VERSION ?= 1.6.4
+GOLANGCI_VERSION ?= 1.41.1
 
 {{- if .GoVersion }}
 
-GOLANG_VERSION ?= 1.14
+GOLANG_VERSION ?= 1.16
 {{- end }}
 
 .PHONY: clear
